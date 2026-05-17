@@ -13,6 +13,7 @@ import json
 import base64
 import urllib.request
 import urllib.error
+import urllib.parse
 from pathlib import Path
 
 VERSION = "1.0.0"
@@ -151,9 +152,22 @@ class GitHub:
             h["Authorization"] = f"Bearer {self.token}"
         return h
 
+    @staticmethod
+    def _encode_path(path: str) -> str:
+        """URL-encode each path segment so filenames with spaces or special
+        characters (parentheses, brackets, etc.) don't break the request."""
+        if "?" in path:
+            p, q = path.split("?", 1)
+        else:
+            p, q = path, ""
+        encoded = "/".join(
+            urllib.parse.quote(seg, safe="") for seg in p.split("/")
+        )
+        return f"{encoded}?{q}" if q else encoded
+
     def _request(self, method: str, path: str, data=None, accept=None,
                  raw_response: bool = False, timeout: int = 60):
-        url = f"{self.API}{path}"
+        url = f"{self.API}{self._encode_path(path)}"
         headers = self._headers(accept) if accept else self._headers()
         body = None
         if data is not None:
